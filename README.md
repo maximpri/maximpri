@@ -7,11 +7,6 @@ I build developer tools for people who run AI on their own machines. **[mlxtop](
 
 Most of my work is in Rust. Installers, routers and glue are written in shell, Python and RouterOS script.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/stats-dark.svg">
-  <img alt="GitHub stats: stars, forks, releases, projects and language mix across my public repositories" src="assets/stats-light.svg" width="100%">
-</picture>
-
 ## Featured
 
 <p>
@@ -47,4 +42,4 @@ brew install maximpri/tap/mlxtop    # macOS and Linux; Windows installer in the 
 mlxtop
 ```
 
-<sub>The banner, stats and cards are SVGs rendered from live GitHub data by <a href="scripts/render.py">scripts/render.py</a> and refreshed daily.</sub>
+<sub>The banner and cards are SVGs rendered from live GitHub data by <a href="scripts/render.py">scripts/render.py</a> and refreshed daily.</sub>

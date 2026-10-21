@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Render the profile's SVG assets (banner, stats, project cards) from live GitHub data.
+"""Render the profile's SVG assets (banner, project cards) from live GitHub data.
 
 Run locally with `GITHUB_TOKEN=$(gh auth token) python3 scripts/render.py`.
-The refresh workflow runs it daily and commits only when a number changes.
+The refresh workflow runs it daily and commits only when a card changes.
 """
 
 import json
@@ -14,9 +14,6 @@ from xml.sax.saxutils import escape
 USER = "maximpri"
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets"
-
-# duet is Declass's earlier name; counting both would double its numbers.
-EXCLUDE = {USER, "duet"}
 
 # Ordered by impact (stars, forks, downloads). Width 840 is the full-width hero card.
 FEATURED = [
@@ -49,13 +46,13 @@ THEMES = {
     "dark": {
         "bg0": "#0d1117", "bg1": "#111a26", "card": "#161b22", "border": "#30363d",
         "text": "#e6edf3", "muted": "#9198a1", "dots": "#30363d",
-        "accent": "#58a6ff", "accent2": "#bc8cff", "chip": "#1c2433", "track": "#21262d",
+        "accent": "#58a6ff", "accent2": "#bc8cff", "chip": "#1c2433",
         "shadow": "0",
     },
     "light": {
         "bg0": "#ffffff", "bg1": "#f3f6fa", "card": "#f6f8fa", "border": "#d0d7de",
         "text": "#1f2328", "muted": "#59636e", "dots": "#d0d7de",
-        "accent": "#0969da", "accent2": "#8250df", "chip": "#eef4fc", "track": "#e4e8ec",
+        "accent": "#0969da", "accent2": "#8250df", "chip": "#eef4fc",
         "shadow": "0.18",
     },
 }
@@ -335,93 +332,20 @@ def card(t, repo, w, kicker, blurb, release):
     return svg(w, h, body, f"{repo['name']}: {blurb}")
 
 
-# ---------------------------------------------------------------- stats
-
-def stats(t, metrics, languages):
-    w, h = 840, 172
-    total = sum(languages.values()) or 1
-    ranked = sorted(languages.items(), key=lambda kv: -kv[1])
-    shown = ranked[:5]
-    other = total - sum(v for _, v in shown)
-
-    cols = []
-    cw = (w - 40) / len(metrics)
-    for i, (label, value) in enumerate(metrics):
-        cx = 20 + cw * i + cw / 2
-        cols.append(
-            f'<text x="{cx:.1f}" y="62" class="sans value" text-anchor="middle">{escape(value)}</text>'
-            f'<text x="{cx:.1f}" y="86" class="sans label" text-anchor="middle">{escape(label.upper())}</text>'
-        )
-        if i:
-            cols.append(f'<line x1="{20 + cw * i:.1f}" y1="34" x2="{20 + cw * i:.1f}" y2="92" stroke="{t["border"]}"/>')
-
-    bar, legend, x, lx = [], [], 28.0, 28.0
-    span = w - 56
-    for name, size in shown + ([("Other", other)] if other else []):
-        frac = size / total
-        color = LANG_COLORS.get(name, "#8b949e")
-        bar.append(f'<rect x="{x:.2f}" y="112" width="{span * frac:.2f}" height="8" fill="{color}"/>')
-        x += span * frac
-        label = f"{name} {frac * 100:.1f}%"
-        legend.append(
-            f'<circle cx="{lx + 4}" cy="146" r="4.5" fill="{color}"/>'
-            f'<text x="{lx + 14}" y="150" class="sans legend">{escape(label)}</text>'
-        )
-        lx += 14 + text_width(label, 12) + 22
-
-    body = f"""<defs>
-  <style>
-    .sans {{ font-family: {SANS}; }}
-    .value {{ font-size: 32px; font-weight: 700; fill: url(#ink); }}
-    .label {{ font-size: 11px; font-weight: 600; letter-spacing: 1.2px; fill: {t["muted"]}; }}
-    .legend {{ font-size: 12px; fill: {t["muted"]}; }}
-  </style>
-  <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="{t["accent"]}"/><stop offset="1" stop-color="{t["accent2"]}"/>
-  </linearGradient>
-  <clipPath id="barclip"><rect x="28" y="112" width="{span}" height="8" rx="4"/></clipPath>
-</defs>
-<rect x=".5" y=".5" width="{w - 1}" height="{h - 1}" rx="12" fill="{t["card"]}" stroke="{t["border"]}"/>
-{"".join(cols)}
-<rect x="28" y="112" width="{span}" height="8" rx="4" fill="{t["track"]}"/>
-<g clip-path="url(#barclip)">{"".join(bar)}</g>
-{"".join(legend)}"""
-    summary = ", ".join(f"{label} {value}" for label, value in metrics)
-    return svg(w, h, body, f"GitHub stats: {summary}")
-
-
 # ---------------------------------------------------------------- main
 
 def main():
-    repos = [
-        r for r in api(f"/users/{USER}/repos?type=owner&per_page=100")
-        if not r["fork"] and not r["private"] and r["name"] not in EXCLUDE
-    ]
-    by_name = {r["name"]: r for r in repos}
-
-    languages, releases, latest = {}, 0, {}
-    for r in repos:
-        for lang, size in api(f"/repos/{USER}/{r['name']}/languages").items():
-            languages[lang] = languages.get(lang, 0) + size
-        published = [rel for rel in api(f"/repos/{USER}/{r['name']}/releases?per_page=100") if not rel["draft"]]
-        releases += len(published)
-        if published:
-            latest[r["name"]] = published[0]["tag_name"]
-
-    metrics = [
-        ("Stars", fmt(sum(r["stargazers_count"] for r in repos))),
-        ("Forks", fmt(sum(r["forks_count"] for r in repos))),
-        ("Releases", fmt(releases)),
-        ("Projects", fmt(len(repos))),
-    ]
-
     OUT.mkdir(exist_ok=True)
     for theme, t in THEMES.items():
         (OUT / f"banner-{theme}.svg").write_text(banner(t))
-        (OUT / f"stats-{theme}.svg").write_text(stats(t, metrics, languages))
-        for name, width, kicker, blurb in FEATURED:
-            (OUT / f"card-{name}-{theme}.svg").write_text(card(t, by_name[name], width, kicker, blurb, latest.get(name)))
-    print("rendered:", ", ".join(f"{k} {v}" for k, v in metrics))
+
+    for name, width, kicker, blurb in FEATURED:
+        repo = api(f"/repos/{USER}/{name}")
+        published = [rel for rel in api(f"/repos/{USER}/{name}/releases?per_page=10") if not rel["draft"]]
+        release = published[0]["tag_name"] if published else None
+        for theme, t in THEMES.items():
+            (OUT / f"card-{name}-{theme}.svg").write_text(card(t, repo, width, kicker, blurb, release))
+        print(f"rendered {name}: {repo['stargazers_count']} stars, {repo['forks_count']} forks, {release}")
 
 
 if __name__ == "__main__":
