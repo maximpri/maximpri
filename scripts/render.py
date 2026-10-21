@@ -60,19 +60,6 @@ THEMES = {
 SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif"
 MONO = "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace"
 
-ICON_STAR = (
-    "M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 "
-    "4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 "
-    "6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Zm0 2.445L6.615 5.5a.75.75 "
-    "0 0 1-.564.41l-3.097.45 2.24 2.184a.75.75 0 0 1 .216.664l-.528 3.084 2.769-1.456a.75.75 0 0 1 "
-    ".698 0l2.77 1.456-.53-3.084a.75.75 0 0 1 .216-.664l2.24-2.183-3.096-.45a.75.75 0 0 1-.564-.41L8 2.694Z"
-)
-ICON_FORK = (
-    "M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 "
-    "2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 "
-    "6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 "
-    "1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"
-)
 ICON_TAG = (
     "M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 "
     "2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 "
@@ -131,10 +118,6 @@ def svg(width, height, body, title):
         f'viewBox="0 0 {width} {height}" role="img" aria-label="{escape(title)}">\n'
         f"<title>{escape(title)}</title>\n{body}\n</svg>\n"
     )
-
-
-def fmt(n):
-    return f"{n / 1000:.1f}k" if n >= 1000 else str(n)
 
 
 # ---------------------------------------------------------------- banner
@@ -290,16 +273,10 @@ def card(t, repo, w, kicker, blurb, release):
         )
 
     fy = h - 24  # footer baseline
-    x = pad
     footer = []
     if lang:
-        footer.append(f'<circle cx="{x + 5}" cy="{fy - 4}" r="5.5" fill="{LANG_COLORS.get(lang, "#8b949e")}"/>')
-        footer.append(f'<text x="{x + 16}" y="{fy}" class="sans meta">{escape(lang)}</text>')
-        x += 16 + text_width(lang, 12) + 18
-    for icon, n in ((ICON_STAR, repo["stargazers_count"]), (ICON_FORK, repo["forks_count"])):
-        footer.append(f'<path d="{icon}" transform="translate({x:.1f} {fy - 11.5}) scale(.8)" fill="{t["muted"]}"/>')
-        footer.append(f'<text x="{x + 18:.1f}" y="{fy}" class="sans meta">{fmt(n)}</text>')
-        x += 18 + text_width(fmt(n), 12) + 18
+        footer.append(f'<circle cx="{pad + 5}" cy="{fy - 4}" r="5.5" fill="{LANG_COLORS.get(lang, "#8b949e")}"/>')
+        footer.append(f'<text x="{pad + 16}" y="{fy}" class="sans meta">{escape(lang)}</text>')
     spdx = (repo.get("license") or {}).get("spdx_id")
     if spdx and spdx != "NOASSERTION":
         footer.append(f'<text x="{w - pad}" y="{fy}" class="sans meta" text-anchor="end">{escape(spdx)}</text>')
@@ -345,7 +322,7 @@ def main():
         release = published[0]["tag_name"] if published else None
         for theme, t in THEMES.items():
             (OUT / f"card-{name}-{theme}.svg").write_text(card(t, repo, width, kicker, blurb, release))
-        print(f"rendered {name}: {repo['stargazers_count']} stars, {repo['forks_count']} forks, {release}")
+        print(f"rendered {name}: {release}")
 
 
 if __name__ == "__main__":
